@@ -13,7 +13,7 @@ PIX_KEY=os.getenv('PIX_KEY','COLOQUE_SUA_CHAVE_PIX')
 DB=os.getenv('DB_FILE','juju_gourmet.db')
 if not TOKEN: raise RuntimeError('BOT_TOKEN não configurado')
 bot=Bot(TOKEN); dp=Dispatcher()
-PRODUCTS=[('Céu Azul',5),('Chocolate',5),('Coco Branco',5),('Coco Queimado',5),('Ferrero Rocher c/ Nutella',7),('Limão',5),('Leite Condensado',5),('Leite Ninho c/ Nutella',7),('Maracujá',5),('Maracujá c/ Nutella',7),('Oreo',5),('Ovomaltine',6),('Pudim',5),('Paçoca',5),('Pistache',7),('Pistache c/ Nutella',8),('Chiclete Trufado',5),('Morango Trufado',6),('Morango do Amor',8),('Morango',5),('Morango c/ Nutella',7),('Fini Dentadura',6)]
+PRODUCTS=[('Céu Azul',5),('Chocolate',5),('Coco Branco',5),('Coco Queimado',5),('Ferrero Rocher c/ Nutella',5),('Limão',5),('Leite Condensado',5),('Leite Ninho c/ Nutella',5),('Maracujá',5),('Maracujá c/ Nutella',5),('Oreo',5),('Ovomaltine',5),('Pudim',5),('Paçoca',5),('Pistache',5),('Pistache c/ Nutella',5),('Chiclete Trufado',5),('Morango Trufado',5),('Morango do Amor',5),('Morango',5),('Morango c/ Nutella',5),('Fini Dentadura',5)]
 
 def conn():
  c=sqlite3.connect(DB); c.execute('CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY,name TEXT UNIQUE,price REAL)'); c.execute('CREATE TABLE IF NOT EXISTS cart(user_id INTEGER,product_id INTEGER,qty INTEGER,PRIMARY KEY(user_id,product_id))'); c.execute('CREATE TABLE IF NOT EXISTS orders(id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER,username TEXT,items TEXT,total REAL,address TEXT,status TEXT,created_at TEXT)')
