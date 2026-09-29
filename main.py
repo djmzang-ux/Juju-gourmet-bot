@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
-from .config import settings
+from config import settings
 from .db import init_db
 from .handlers.user import router as user_router
 from .handlers.admin import router as admin_router
