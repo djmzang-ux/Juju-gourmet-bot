@@ -9,15 +9,19 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN=os.getenv('BOT_TOKEN','')
 ADMIN_ID=int(os.getenv('ADMIN_ID','0'))
-PIX_KEY=os.getenv('PIX_KEY','COLOQUE_SUA_CHAVE_PIX')
+PIX_KEY='17 99777-1508'
+PIX_NAME='Pedro Henrique de Matos'
+FRETE=10
 DB=os.getenv('DB_FILE','juju_gourmet.db')
 if not TOKEN: raise RuntimeError('BOT_TOKEN não configurado')
 bot=Bot(TOKEN); dp=Dispatcher()
-PRODUCTS=[('Céu Azul',5),('Chocolate',5),('Coco Branco',5),('Coco Queimado',5),('Ferrero Rocher c/ Nutella',5),('Limão',5),('Leite Condensado',5),('Leite Ninho c/ Nutella',5),('Maracujá',5),('Maracujá c/ Nutella',5),('Oreo',5),('Ovomaltine',5),('Pudim',5),('Paçoca',5),('Pistache',5),('Pistache c/ Nutella',5),('Chiclete Trufado',5),('Morango Trufado',5),('Morango do Amor',5),('Morango',5),('Morango c/ Nutella',5),('Fini Dentadura',5)]
+PRODUCTS=[('Céu Azul', 10),('Chocolate', 10),('Coco Branco', 10),('Coco Queimado', 10),('Ferrero Rocher c/ Nutella', 10),('Limão', 10),('Leite Condensado', 10),('Leite Ninho c/ Nutella', 10),('Maracujá', 10),('Maracujá c/ Nutella', 10),('Oreo', 10),('Ovomaltine', 10),('Pudim', 10),('Paçoca', 10),('Pistache', 10),('Pistache c/ Nutella', 10),('Chiclete Trufado', 10),('Morango Trufado', 10),('Morango do Amor', 10),('Morango', 10),('Morango c/ Nutella', 10),('Fini Dentadura', 10),('Trufa Ninho com Nutella', 10),('Trufa Ninho com Ovomaltine', 10),('Trufa Paçoca', 10)]
 
 def conn():
  c=sqlite3.connect(DB); c.execute('CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY,name TEXT UNIQUE,price REAL)'); c.execute('CREATE TABLE IF NOT EXISTS cart(user_id INTEGER,product_id INTEGER,qty INTEGER,PRIMARY KEY(user_id,product_id))'); c.execute('CREATE TABLE IF NOT EXISTS orders(id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER,username TEXT,items TEXT,total REAL,address TEXT,status TEXT,created_at TEXT)')
- for n,p in PRODUCTS: c.execute('INSERT OR IGNORE INTO products(name,price) VALUES(?,?)',(n,p))
+ for n,p in PRODUCTS:
+  c.execute('INSERT OR IGNORE INTO products(name,price) VALUES(?,?)',(n,p))
+  c.execute('UPDATE products SET price=? WHERE name=?',(p,n))
  c.commit(); return c
 
 def menu():
@@ -61,9 +65,11 @@ async def clear(q:CallbackQuery): c=conn(); c.execute('DELETE FROM cart WHERE us
 pending={}
 @dp.callback_query(F.data=='checkout')
 async def checkout(q:CallbackQuery):
- rows,total=cart_data(q.from_user.id)
- if not total: await q.answer('Carrinho vazio',show_alert=True); return
- pending[q.from_user.id]=total; await q.message.answer(f'📦 Total: *R$ {total:.2f}*\n\nEnvie seu endereço ou escreva *RETIRADA*.',parse_mode='Markdown'); await q.answer()
+  rows,subtotal=cart_data(q.from_user.id)
+  if not subtotal: await q.answer('Carrinho vazio',show_alert=True); return
+  pending[q.from_user.id]=subtotal
+  await q.message.answer(f'🛍️ Produtos: *R$ {subtotal:.2f}*\n🚚 Entrega: *R$ {FRETE:.2f}*\n🏪 Retirada: *Grátis*\n\nDigite *RETIRADA* se vai buscar ou envie seu endereço para entrega.',parse_mode='Markdown')
+  await q.answer()
 
 @dp.message(F.text=='📦 Meus pedidos')
 @dp.message(Command('meuspedidos'))
@@ -99,8 +105,23 @@ async def admin_products(m:Message):
 
 @dp.message(F.text)
 async def address(m:Message):
- if m.from_user.id not in pending:return
- total=pending.pop(m.from_user.id); addr=m.text; rows,_=cart_data(m.from_user.id); items=', '.join(f'{q}x {n}' for n,p,q in rows); c=conn(); cur=c.execute('INSERT INTO orders(user_id,username,items,total,address,status,created_at) VALUES(?,?,?,?,?,?,?)',(m.from_user.id,m.from_user.username or '',items,total,addr,'Aguardando pagamento',datetime.now().isoformat(timespec='minutes'))); oid=cur.lastrowid; c.execute('DELETE FROM cart WHERE user_id=?',(m.from_user.id,)); c.commit(); c.close(); await m.answer(f'✅ *Pedido #{oid} criado!*\n\n🍫 {items}\n💰 R$ {total:.2f}\n📍 {addr}\n\n💳 Pix:\n`{PIX_KEY}`\n\nApós pagar, envie o comprovante ao atendente.',parse_mode='Markdown')
+  if m.from_user.id not in pending:return
+  subtotal=pending.pop(m.from_user.id)
+  addr=m.text.strip()
+  retirada=addr.upper()=='RETIRADA'
+  frete=0 if retirada else FRETE
+  total=subtotal+frete
+  rows,_=cart_data(m.from_user.id)
+  items=', '.join(f'{q}x {n}' for n,p,q in rows)
+  c=conn()
+  cur=c.execute('INSERT INTO orders(user_id,username,items,total,address,status,created_at) VALUES(?,?,?,?,?,?,?)',
+                (m.from_user.id,m.from_user.username or '',items,total,addr,'Aguardando pagamento',datetime.now().isoformat(timespec='minutes')))
+  oid=cur.lastrowid
+  c.execute('DELETE FROM cart WHERE user_id=?',(m.from_user.id,))
+  c.commit(); c.close()
+  entrega='🏪 Retirada grátis' if retirada else f'🚚 Frete: R$ {FRETE:.2f}'
+  local='Retirada' if retirada else addr
+  await m.answer(f'✅ *Pedido #{oid} criado!*\n\n🍫 {items}\n🛍️ Produtos: R$ {subtotal:.2f}\n{entrega}\n💰 *Total: R$ {total:.2f}*\n📍 {local}\n\n💳 *Pix:*\n`{PIX_KEY}`\n👤 {PIX_NAME}\n\nApós pagar, envie o comprovante ao atendente.',parse_mode='Markdown')
 
 async def main(): conn().close(); print('Juju Gourmet Bot iniciado'); await dp.start_polling(bot)
 if __name__=='__main__': asyncio.run(main())
