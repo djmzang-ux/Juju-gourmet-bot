@@ -207,8 +207,12 @@ async def show_products_message(target):
     )
 
 
-async def show_cart_message(target):
-    user_id = target.from_user.id
+async def show_cart_message(target, user_id=None):
+    # Em callbacks do Telegram, target.message pertence ao bot.
+    # Por isso usamos query.from_user.id quando o carrinho é aberto por botão.
+    if user_id is None:
+        user_id = target.from_user.id
+
     rows, subtotal = cart_data(user_id)
 
     if not rows:
@@ -338,7 +342,8 @@ async def cart(message: Message):
 @dp.callback_query(F.data == "cart")
 async def cart_cb(query: CallbackQuery):
     await query.answer()
-    await show_cart_message(query.message)
+    # O usuário correto é query.from_user.id, e não query.message.from_user.id.
+    await show_cart_message(query.message, user_id=query.from_user.id)
 
 
 @dp.callback_query(F.data == "clear")
