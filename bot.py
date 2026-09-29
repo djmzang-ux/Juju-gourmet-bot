@@ -30,7 +30,7 @@ def menu():
 def prod_kb():
  c=conn(); rows=c.execute('SELECT id,name,price FROM products ORDER BY id').fetchall(); c.close(); k=InlineKeyboardBuilder()
  for i,n,p in rows: k.button(text=f'{n} — R$ {p:.2f}',callback_data=f'add:{i}')
- k.button(text='🛒 Ver carrinho',callback_data='cart'); k.adjust(1); return k.as_markup()
+ k.adjust(1); return k.as_markup()
 
 def cart_data(uid):
  c=conn(); rows=c.execute('SELECT p.name,p.price,ca.qty FROM cart ca JOIN products p ON p.id=ca.product_id WHERE ca.user_id=?',(uid,)).fetchall(); c.close(); total=sum(p*q for _,p,q in rows); return rows,total
