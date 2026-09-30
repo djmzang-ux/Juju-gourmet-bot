@@ -64,7 +64,7 @@ PRODUCTS = [
     ("Trufa Ninho com Nutella", 10),
     ("Trufa Ninho com Ovomaltine", 10),
     ("Trufa Paçoca", 10),
-    ("Pastel de Ninho com Nutella", 10),
+    ("Pastel de Ninho com Nutella", 12),
 ]
 
 
