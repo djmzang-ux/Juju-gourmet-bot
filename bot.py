@@ -333,7 +333,7 @@ async def start(message: Message):
     conn().close()
     await message.answer(
         "ð« <b>Juju Gourmet</b>\n\n"
-        "Bem-vindo! ð\n"
+        "Bem-vindo!👋🏻\n"
         "FaÃ§a seu pedido de forma rÃ¡pida pelo botÃ£o abaixo.\n\n"
         "Escolha os produtos â confira o carrinho â escolha "
         "entrega ou retirada â pague pelo Pix.",
