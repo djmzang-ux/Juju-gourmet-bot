@@ -1,19 +1,17 @@
 import os
 import sqlite3
 import asyncio
+from io import BytesIO
 from datetime import datetime
 from html import escape
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, FSInputFile, InlineKeyboardButton, CopyTextButton
+from aiogram.types import Message, CallbackQuery, FSInputFile, BufferedInputFile, InlineKeyboardButton, CopyTextButton, InlineKeyboardButton, CopyTextButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from dotenv import load_dotenv
 
-try:
-    import qrcode
-except ImportError:
-    qrcode = None
+import base64
 
 load_dotenv()
 
@@ -21,16 +19,10 @@ TOKEN = os.getenv("BOT_TOKEN", "")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 DB = os.getenv("DB_FILE", "juju_gourmet.db")
 
-PIX_KEY = "17 99777-1508"
-PIX_NAME = "Pedro Henrique de Matos"
-PIX_COPIA_COLA = (
-    "00020101021126360014br.gov.bcb.pix0114+5517997771508"
-    "5204000053039865802BR5925PEDRO HENRIQUE DE MATOS Z"
-    "6009SAO PAULO622905251M3QFQHD2A4QEQG9D9MJP9NTQ63047A93"
-)
 FRETE = 10.00
 ATENDENTE = "djalmazang"
 QR_FILE = "pix_qrcode.png"
+PIX_QR_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAeoAAAHqAQAAAADjFjCXAAAEMElEQVR4nO2dTY6jMBCFXw1IWRqpD5CjwA3mSK0+0twAjpIDRLKXkUA1C5d/Qs8qZpSO8mqBCPDJjVQq86rKblE02PKrhQaIEydOnDhx4sSJH4uLWQ8s0gMI9jNeixbKDRGZjhud+Jvio6qqekAmbILlrKqzuwngVgDx2k1kQqeqqnqPN45O/E3xYOFLZwDyeRGRz8tJAWwiUzhVUreOfz/jjyf+Ynj/r4u6DN0KhE10+d0pENKNfHbM6MTfE997nQDdKnBXAdCtMl4EGOebYPQbZPxz6OjE3xNPXucUQAD2SePlbFfKjfqRl3534k/GFxERGQCZQg+Ml5Ni9ADGSw+ZwknTx90WJeyhoxN/MzzGujqQhU0AdxMsZ5Ov8dpyvonug+FLvzvxZ+GIeZDRd/GgMzoF0MVEis4AdM4/48O6xjOdX/rdiT8LN/eJKThnLmWTq+9UNXliydLpHJ+j1xF/1GqvS2HODjFB3Gn1SPZJxjriDWbu41YrUMxOVVVXpGtrnoTzhFseful3J/4sPKoJGf0GRfhYgdCvMs4AYsALHyrjbJljgbv2Ml5OKoeMTvw98TTDelSxDmWGjVNqOXgTF4x1xBusaNgoGqJU8IDp2vLB51LNf1SqCeItZrWJZYAonIfAbb0uA2BqIgwAnIci9Cvgrr0uwzWVNF763Yk/C6/VBJDTIr5LkiKl6oAYCVeTFNSwxB+3b6m6LFrhdkI2nZnMpdcRf9SKh6UIZ05oCsOjdjPNmWN6HfFGXNWbaJUJgM5BrA4bv/CwSTmIDBur/8RbrGROTMPC8sAprgGo6xUlkcxYR/xRSw5UvtzyDKsr7OMuPpcFB6gmiDdZ9V1nluSrxj4UwLRGTt/lM3od8cdsX5vQ1PNUhzmfDrn7hLGOeINZrANQBKqlSu47nWagKosx1hFvMAtaRSoAiGHu3uFM5qYCLWMd8Qar58tduTW5WRSt5n+lLYBeR/xBu1uZ6K6yW0GhACCAQOGuomO833HtP/EWq9REtVrC1Y0nllLxqNpNGOuIN1idJXa1S9n9JGRTWTYl8uh1xBtxmQAAQcT2dMImqQ+lU/n0ABBOGpfHipw4wxJvsUpIVD0nvvR35rNUqojGWEf8cYv5OsvD3YnW3HNS1ihGhLUJ4m14nTmxfHFyqeyOpeezNLQzX0e8wUptArtu4Tl1daZ6WQqHuQ+PXke8BR9z+mRME6lpCJjW0K8hr8x2N/bXET8AT3t1yhTypsNxPWwfWzvl89LHvZ+imj10dOLvjVer++PmsC6tgv0aNomfeV9nxjriR+IypXKXfsnJUirLkDrtlqFTmdCpTP9jdOLvgX/bq3MZOtgc6jwE6Fddps02jAW2XpffeRu7l3534s/C9xq2anLK6ePU81SmXubriLdY1WTygPG/1xEnTpw4ceLEif8U/C9I5iPW6OlBawAAAABJRU5ErkJggg=="
 
 if not TOKEN:
     raise RuntimeError("BOT_TOKEN não configurado")
@@ -64,7 +56,7 @@ PRODUCTS = [
     ("Trufa Ninho com Nutella", 10),
     ("Trufa Ninho com Ovomaltine", 10),
     ("Trufa Paçoca", 10),
-    ("Pastel de Ninho com Nutella", 12),
+    ("Pastel de Ninho com Nutella", 10),
 ]
 
 
@@ -225,17 +217,42 @@ def payment_kb():
     return k.as_markup()
 
 
-def ensure_qr():
-    if os.path.exists(QR_FILE):
-        return True
+def pix_tlv(tag, value):
+    value = str(value)
+    return f"{tag}{len(value):02d}{value}"
 
-    if qrcode is None:
-        print("AVISO: pacote qrcode não instalado.")
-        return False
 
-    img = qrcode.make(PIX_COPIA_COLA)
-    img.save(QR_FILE)
-    return True
+def pix_crc16(payload):
+    crc = 0xFFFF
+    for byte in payload.encode("utf-8"):
+        crc ^= byte << 8
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = ((crc << 1) ^ 0x1021) & 0xFFFF
+            else:
+                crc = (crc << 1) & 0xFFFF
+    return f"{crc:04X}"
+
+
+def pix_payload_com_valor(total):
+    merchant_account = (
+        pix_tlv("00", "br.gov.bcb.pix")
+        + pix_tlv("01", "+5517997771508")
+    )
+    payload = (
+        pix_tlv("00", "01")
+        + pix_tlv("01", "11")
+        + pix_tlv("26", merchant_account)
+        + pix_tlv("52", "0000")
+        + pix_tlv("53", "986")
+        + pix_tlv("54", f"{total:.2f}")
+        + pix_tlv("58", "BR")
+        + pix_tlv("59", "PEDRO HENRIQUE DE MATOS Z")
+        + pix_tlv("60", "SAO PAULO")
+        + pix_tlv("62", pix_tlv("05", "***"))
+    )
+    return payload + "6304" + pix_crc16(payload + "6304")
+
 
 
 async def show_products_message(target):
@@ -509,14 +526,8 @@ async def finish_order(message, user, address):
     )
 
     # Pagamento em três partes: dados do Pix, QR Code e copia e cola.
-    payment_text = (
-        f"💳 <b>Pagamento do pedido #{order_id}</b>\n\n"
-        f"🍫 Produtos: R$ {subtotal:.2f}\n"
-        f"{'🚚 Entrega' if is_delivery else '🏠 Retirada'}: R$ {fee:.2f}\n"
-        f"💰 <b>Total a pagar: R$ {total:.2f}</b>\n\n"
-        f"🔑 <b>Pix:</b> <code>{escape(PIX_KEY)}</code>\n"
-        f"👤 <b>Nome:</b> {escape(PIX_NAME)}"
-    )
+    # Gera um Pix copia e cola específico deste pedido, com o valor já preenchido.
+    pix_code = pix_payload_com_valor(total)
 
     await message.answer(
         f"✅ <b>Pedido #{order_id} criado!</b>\n\n"
@@ -526,32 +537,40 @@ async def finish_order(message, user, address):
         parse_mode="HTML",
     )
 
-    # 1) Dados do Pix ficam primeiro.
-    await message.answer(payment_text, parse_mode="HTML")
+    # QR Code gerado na hora, com o mesmo valor do pedido.
+    if qrcode is not None:
+        qr_image = qrcode.make(pix_code)
+        qr_buffer = BytesIO()
+        qr_image.save(qr_buffer, format="PNG")
+        qr_buffer.seek(0)
 
-    # 2) QR Code fica exatamente entre o Pix e o copia e cola.
-    if ensure_qr():
         await message.answer_photo(
-            FSInputFile(QR_FILE),
+            BufferedInputFile(
+                qr_buffer.getvalue(),
+                filename=f"pix_pedido_{order_id}.png",
+            ),
             caption=(
                 f"📷 <b>QR Code do Pix</b>\n"
-                f"Pedido #{order_id} • Total: <b>R$ {total:.2f}</b>\n\n"
-                "Aponte a câmera do aplicativo do banco para o QR Code."
+                f"Pedido #{order_id}\n"
+                f"💰 Valor já preenchido: <b>R$ {total:.2f}</b>\n\n"
+                "Escaneie o QR Code para pagar."
             ),
             parse_mode="HTML",
         )
     else:
         await message.answer(
-            "⚠️ O QR Code não pôde ser gerado.\n"
-            "Use o Pix copia e cola abaixo para fazer o pagamento."
+            "⚠️ O QR Code não pôde ser gerado porque a biblioteca "
+            "<code>qrcode</code> não está instalada.\n\n"
+            "Use o Pix copia e cola abaixo.",
+            parse_mode="HTML",
         )
 
-    # 3) Copia e cola abaixo do QR Code, com botão nativo de copiar.
+    # Botão nativo do Telegram para copiar o código completo.
     copy_k = InlineKeyboardBuilder()
     copy_k.add(
         InlineKeyboardButton(
             text="📋 Copiar Pix copia e cola",
-            copy_text=CopyTextButton(text=PIX_COPIA_COLA),
+            copy_text=CopyTextButton(text=pix_code),
         )
     )
     copy_k.button(
@@ -563,8 +582,9 @@ async def finish_order(message, user, address):
 
     await message.answer(
         f"📋 <b>Pix copia e cola</b>\n\n"
-        f"<code>{escape(PIX_COPIA_COLA)}</code>\n\n"
-        "Toque em <b>Copiar Pix copia e cola</b> para copiar automaticamente.",
+        f"<code>{escape(pix_code)}</code>\n\n"
+        f"💰 <b>Valor já incluído: R$ {total:.2f}</b>\n\n"
+        "Toque no botão abaixo para copiar.",
         parse_mode="HTML",
         reply_markup=copy_k.as_markup(),
     )
@@ -747,7 +767,6 @@ async def address(message: Message):
 
 async def main():
     conn().close()
-    ensure_qr()
     print("Juju Gourmet Bot iniciado")
     await dp.start_polling(bot)
 
