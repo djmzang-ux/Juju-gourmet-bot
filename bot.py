@@ -12,6 +12,12 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from dotenv import load_dotenv
 
 import base64
+import qrcode
+
+try:
+    import qrcode
+except ImportError:
+    qrcode = None
 
 load_dotenv()
 
@@ -25,26 +31,26 @@ QR_FILE = "pix_qrcode.png"
 PIX_QR_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAeoAAAHqAQAAAADjFjCXAAAEMElEQVR4nO2dTY6jMBCFXw1IWRqpD5CjwA3mSK0+0twAjpIDRLKXkUA1C5d/Qs8qZpSO8mqBCPDJjVQq86rKblE02PKrhQaIEydOnDhx4sSJH4uLWQ8s0gMI9jNeixbKDRGZjhud+Jvio6qqekAmbILlrKqzuwngVgDx2k1kQqeqqnqPN45O/E3xYOFLZwDyeRGRz8tJAWwiUzhVUreOfz/jjyf+Ynj/r4u6DN0KhE10+d0pENKNfHbM6MTfE997nQDdKnBXAdCtMl4EGOebYPQbZPxz6OjE3xNPXucUQAD2SePlbFfKjfqRl3534k/GFxERGQCZQg+Ml5Ni9ADGSw+ZwknTx90WJeyhoxN/MzzGujqQhU0AdxMsZ5Ov8dpyvonug+FLvzvxZ+GIeZDRd/GgMzoF0MVEis4AdM4/48O6xjOdX/rdiT8LN/eJKThnLmWTq+9UNXliydLpHJ+j1xF/1GqvS2HODjFB3Gn1SPZJxjriDWbu41YrUMxOVVVXpGtrnoTzhFseful3J/4sPKoJGf0GRfhYgdCvMs4AYsALHyrjbJljgbv2Ml5OKoeMTvw98TTDelSxDmWGjVNqOXgTF4x1xBusaNgoGqJU8IDp2vLB51LNf1SqCeItZrWJZYAonIfAbb0uA2BqIgwAnIci9Cvgrr0uwzWVNF763Yk/C6/VBJDTIr5LkiKl6oAYCVeTFNSwxB+3b6m6LFrhdkI2nZnMpdcRf9SKh6UIZ05oCsOjdjPNmWN6HfFGXNWbaJUJgM5BrA4bv/CwSTmIDBur/8RbrGROTMPC8sAprgGo6xUlkcxYR/xRSw5UvtzyDKsr7OMuPpcFB6gmiDdZ9V1nluSrxj4UwLRGTt/lM3od8cdsX5vQ1PNUhzmfDrn7hLGOeINZrANQBKqlSu47nWagKosx1hFvMAtaRSoAiGHu3uFM5qYCLWMd8Qar58tduTW5WRSt5n+lLYBeR/xBu1uZ6K6yW0GhACCAQOGuomO833HtP/EWq9REtVrC1Y0nllLxqNpNGOuIN1idJXa1S9n9JGRTWTYl8uh1xBtxmQAAQcT2dMImqQ+lU/n0ABBOGpfHipw4wxJvsUpIVD0nvvR35rNUqojGWEf8cYv5OsvD3YnW3HNS1ihGhLUJ4m14nTmxfHFyqeyOpeezNLQzX0e8wUptArtu4Tl1daZ6WQqHuQ+PXke8BR9z+mRME6lpCJjW0K8hr8x2N/bXET8AT3t1yhTypsNxPWwfWzvl89LHvZ+imj10dOLvjVer++PmsC6tgv0aNomfeV9nxjriR+IypXKXfsnJUirLkDrtlqFTmdCpTP9jdOLvgX/bq3MZOtgc6jwE6Fddps02jAW2XpffeRu7l3534s/C9xq2anLK6ePU81SmXubriLdY1WTygPG/1xEnTpw4ceLEif8U/C9I5iPW6OlBawAAAABJRU5ErkJggg=="
 
 if not TOKEN:
-    raise RuntimeError("BOT_TOKEN não configurado")
+    raise RuntimeError("BOT_TOKEN nÃ£o configurado")
 
 bot = Bot(TOKEN)
 dp = Dispatcher()
 
 PRODUCTS = [
-    ("Céu Azul", 10),
+    ("CÃ©u Azul", 10),
     ("Chocolate", 10),
     ("Coco Branco", 10),
     ("Coco Queimado", 10),
     ("Ferrero Rocher c/ Nutella", 10),
-    ("Limão", 10),
+    ("LimÃ£o", 10),
     ("Leite Condensado", 10),
     ("Leite Ninho c/ Nutella", 10),
-    ("Maracujá", 10),
-    ("Maracujá c/ Nutella", 10),
+    ("MaracujÃ¡", 10),
+    ("MaracujÃ¡ c/ Nutella", 10),
     ("Oreo", 10),
     ("Ovomaltine", 10),
     ("Pudim", 10),
-    ("Paçoca", 10),
+    ("PaÃ§oca", 10),
     ("Pistache", 10),
     ("Pistache c/ Nutella", 10),
     ("Chiclete Trufado", 10),
@@ -55,7 +61,7 @@ PRODUCTS = [
     ("Fini Dentadura", 10),
     ("Trufa Ninho com Nutella", 10),
     ("Trufa Ninho com Ovomaltine", 10),
-    ("Trufa Paçoca", 10),
+    ("Trufa PaÃ§oca", 10),
     ("Pastel de Ninho com Nutella", 12),
 ]
 
@@ -94,22 +100,22 @@ def conn():
 
 def menu():
     k = ReplyKeyboardBuilder()
-    k.button(text="🛍 Produtos")
-    k.button(text="🛒 Meu carrinho")
-    k.button(text="📦 Meus pedidos")
-    k.button(text="🎁 Promoções")
-    k.button(text="💬 Falar com atendente")
+    k.button(text="ð Produtos")
+    k.button(text="ð Meu carrinho")
+    k.button(text="ð¦ Meus pedidos")
+    k.button(text="ð PromoÃ§Ãµes")
+    k.button(text="ð¬ Falar com atendente")
     k.adjust(2, 2, 1)
     return k.as_markup(resize_keyboard=True)
 
 
 def start_kb():
     k = InlineKeyboardBuilder()
-    k.button(text="🛍 Ver produtos", callback_data="products")
-    k.button(text="🍰 Outras delícias", callback_data="other")
-    k.button(text="🛒 Meu carrinho", callback_data="cart")
+    k.button(text="ð Ver produtos", callback_data="products")
+    k.button(text="ð° Outras delÃ­cias", callback_data="other")
+    k.button(text="ð Meu carrinho", callback_data="cart")
     k.button(
-        text="💬 Falar com atendente",
+        text="ð¬ Falar com atendente",
         url=f"https://t.me/{ATENDENTE}",
     )
     k.adjust(1)
@@ -127,21 +133,21 @@ def prod_kb():
     outras = {
         "Trufa Ninho com Nutella",
         "Trufa Ninho com Ovomaltine",
-        "Trufa Paçoca",
+        "Trufa PaÃ§oca",
         "Pastel de Ninho com Nutella",
     }
 
-    # As trufas e o pastel ficam na aba "Outras delícias".
+    # As trufas e o pastel ficam na aba "Outras delÃ­cias".
     for product_id, name, price in rows:
         if name in outras:
             continue
         k.button(
-            text=f"{name} — R$ {price:.2f}",
+            text=f"{name} â R$ {price:.2f}",
             callback_data=f"add:{product_id}",
         )
 
-    k.button(text="🍰 Outras delícias", callback_data="other")
-    k.button(text="🏠 Voltar ao início", callback_data="home")
+    k.button(text="ð° Outras delÃ­cias", callback_data="other")
+    k.button(text="ð  Voltar ao inÃ­cio", callback_data="home")
     k.adjust(1)
     return k.as_markup()
 
@@ -151,7 +157,7 @@ def other_kb():
     nomes = (
         "Trufa Ninho com Nutella",
         "Trufa Ninho com Ovomaltine",
-        "Trufa Paçoca",
+        "Trufa PaÃ§oca",
         "Pastel de Ninho com Nutella",
     )
     placeholders = ",".join("?" for _ in nomes)
@@ -164,13 +170,13 @@ def other_kb():
     k = InlineKeyboardBuilder()
     for product_id, name, price in rows:
         k.button(
-            text=f"{name} — R$ {price:.2f}",
+            text=f"{name} â R$ {price:.2f}",
             callback_data=f"add:{product_id}",
         )
 
-    k.button(text="🛒 Ver carrinho", callback_data="cart")
-    k.button(text="🛍 Continuar comprando", callback_data="products")
-    k.button(text="🏠 Voltar ao início", callback_data="home")
+    k.button(text="ð Ver carrinho", callback_data="cart")
+    k.button(text="ð Continuar comprando", callback_data="products")
+    k.button(text="ð  Voltar ao inÃ­cio", callback_data="home")
     k.adjust(1)
     return k.as_markup()
 
@@ -191,17 +197,17 @@ def cart_data(user_id):
 
 def cart_kb():
     k = InlineKeyboardBuilder()
-    k.button(text="✅ Finalizar pedido", callback_data="checkout")
-    k.button(text="🛍 Continuar comprando", callback_data="products")
-    k.button(text="🗑 Limpar carrinho", callback_data="clear")
+    k.button(text="â Finalizar pedido", callback_data="checkout")
+    k.button(text="ð Continuar comprando", callback_data="products")
+    k.button(text="ð Limpar carrinho", callback_data="clear")
     k.adjust(1)
     return k.as_markup()
 
 
 def delivery_kb():
     k = InlineKeyboardBuilder()
-    k.button(text="🚚 Entrega — R$ 10,00", callback_data="delivery")
-    k.button(text="🏠 Retirada — GRÁTIS", callback_data="pickup")
+    k.button(text="ð Entrega â R$ 10,00", callback_data="delivery")
+    k.button(text="ð  Retirada â GRÃTIS", callback_data="pickup")
     k.adjust(1)
     return k.as_markup()
 
@@ -209,10 +215,10 @@ def delivery_kb():
 def payment_kb():
     k = InlineKeyboardBuilder()
     k.button(
-        text="💬 Enviar comprovante ao atendente",
+        text="ð¬ Enviar comprovante ao atendente",
         url=f"https://t.me/{ATENDENTE}",
     )
-    k.button(text="🛍 Fazer novo pedido", callback_data="products")
+    k.button(text="ð Fazer novo pedido", callback_data="products")
     k.adjust(1)
     return k.as_markup()
 
@@ -257,8 +263,8 @@ def pix_payload_com_valor(total):
 
 async def show_products_message(target):
     await target.answer(
-        "🍫 <b>Escolha o sabor:</b>\n\n"
-        "Todos os produtos estão por <b>R$ 10,00</b>.",
+        "ð« <b>Escolha o sabor:</b>\n\n"
+        "Todos os produtos estÃ£o por <b>R$ 10,00</b>.",
         parse_mode="HTML",
         reply_markup=prod_kb(),
     )
@@ -266,7 +272,7 @@ async def show_products_message(target):
 
 async def show_cart_message(target, user_id=None):
     # Em callbacks do Telegram, target.message pertence ao bot.
-    # Por isso usamos query.from_user.id quando o carrinho é aberto por botão.
+    # Por isso usamos query.from_user.id quando o carrinho Ã© aberto por botÃ£o.
     if user_id is None:
         user_id = target.from_user.id
 
@@ -274,19 +280,19 @@ async def show_cart_message(target, user_id=None):
 
     if not rows:
         k = InlineKeyboardBuilder()
-        k.button(text="🛍 Ver produtos", callback_data="products")
+        k.button(text="ð Ver produtos", callback_data="products")
         await target.answer(
-            "🛒 Seu carrinho está vazio.\n\n"
-            "Escolha seus produtos para começar.",
+            "ð Seu carrinho estÃ¡ vazio.\n\n"
+            "Escolha seus produtos para comeÃ§ar.",
             reply_markup=k.as_markup(),
         )
         return
 
-    text = "🛒 <b>Seu carrinho:</b>\n\n"
+    text = "ð <b>Seu carrinho:</b>\n\n"
     for name, price, qty in rows:
-        text += f"• {qty}x {escape(name)} — R$ {price * qty:.2f}\n"
+        text += f"â¢ {qty}x {escape(name)} â R$ {price * qty:.2f}\n"
 
-    text += f"\n💰 <b>Subtotal: R$ {subtotal:.2f}</b>"
+    text += f"\nð° <b>Subtotal: R$ {subtotal:.2f}</b>"
     text += "\n\nClique em <b>Finalizar pedido</b> para escolher entrega ou retirada."
 
     await target.answer(
@@ -326,17 +332,17 @@ pending = {}
 async def start(message: Message):
     conn().close()
     await message.answer(
-        "🍫 <b>Juju Gourmet</b>\n\n"
-        "Bem-vindo! 👋\n"
-        "Faça seu pedido de forma rápida pelo botão abaixo.\n\n"
-        "Escolha os produtos → confira o carrinho → escolha "
-        "entrega ou retirada → pague pelo Pix.",
+        "ð« <b>Juju Gourmet</b>\n\n"
+        "Bem-vindo! ð\n"
+        "FaÃ§a seu pedido de forma rÃ¡pida pelo botÃ£o abaixo.\n\n"
+        "Escolha os produtos â confira o carrinho â escolha "
+        "entrega ou retirada â pague pelo Pix.",
         parse_mode="HTML",
         reply_markup=start_kb(),
     )
 
 
-@dp.message(F.text == "🛍 Produtos")
+@dp.message(F.text == "ð Produtos")
 @dp.message(Command("produtos"))
 async def products(message: Message):
     await show_products_message(message)
@@ -352,7 +358,7 @@ async def products_cb(query: CallbackQuery):
 async def other_cb(query: CallbackQuery):
     await query.answer()
     await query.message.answer(
-        "🍰 <b>Outras delícias:</b>\n\nEscolha uma opção abaixo.",
+        "ð° <b>Outras delÃ­cias:</b>\n\nEscolha uma opÃ§Ã£o abaixo.",
         parse_mode="HTML",
         reply_markup=other_kb(),
     )
@@ -370,7 +376,7 @@ async def add(query: CallbackQuery):
 
     if not row:
         c.close()
-        await query.answer("Produto não encontrado.", show_alert=True)
+        await query.answer("Produto nÃ£o encontrado.", show_alert=True)
         return
 
     name, price = row
@@ -385,22 +391,22 @@ async def add(query: CallbackQuery):
 
     await query.answer(f"{name} adicionado!")
 
-    # O botão de carrinho aparece depois da escolha do produto,
-    # e não abaixo da lista de sabores.
+    # O botÃ£o de carrinho aparece depois da escolha do produto,
+    # e nÃ£o abaixo da lista de sabores.
     k = InlineKeyboardBuilder()
-    k.button(text="🛒 Ver carrinho", callback_data="cart")
-    k.button(text="➕ Continuar comprando", callback_data="products")
+    k.button(text="ð Ver carrinho", callback_data="cart")
+    k.button(text="â Continuar comprando", callback_data="products")
     k.adjust(1)
 
     await query.message.answer(
-        f"✅ <b>{escape(name)}</b> adicionado ao carrinho.\n"
+        f"â <b>{escape(name)}</b> adicionado ao carrinho.\n"
         f"Valor: R$ {price:.2f}",
         parse_mode="HTML",
         reply_markup=k.as_markup(),
     )
 
 
-@dp.message(F.text == "🛒 Meu carrinho")
+@dp.message(F.text == "ð Meu carrinho")
 @dp.message(Command("carrinho"))
 async def cart(message: Message):
     await show_cart_message(message)
@@ -409,7 +415,7 @@ async def cart(message: Message):
 @dp.callback_query(F.data == "cart")
 async def cart_cb(query: CallbackQuery):
     await query.answer()
-    # O usuário correto é query.from_user.id, e não query.message.from_user.id.
+    # O usuÃ¡rio correto Ã© query.from_user.id, e nÃ£o query.message.from_user.id.
     await show_cart_message(query.message, user_id=query.from_user.id)
 
 
@@ -422,9 +428,9 @@ async def clear(query: CallbackQuery):
 
     await query.answer("Carrinho limpo!")
     k = InlineKeyboardBuilder()
-    k.button(text="🛍 Ver produtos", callback_data="products")
+    k.button(text="ð Ver produtos", callback_data="products")
     await query.message.answer(
-        "🛒 Carrinho limpo.\n\nVocê pode escolher os produtos novamente.",
+        "ð Carrinho limpo.\n\nVocÃª pode escolher os produtos novamente.",
         reply_markup=k.as_markup(),
     )
 
@@ -434,7 +440,7 @@ async def checkout(query: CallbackQuery):
     rows, subtotal = cart_data(query.from_user.id)
 
     if not rows:
-        await query.answer("Seu carrinho está vazio.", show_alert=True)
+        await query.answer("Seu carrinho estÃ¡ vazio.", show_alert=True)
         return
 
     pending[query.from_user.id] = {
@@ -444,8 +450,8 @@ async def checkout(query: CallbackQuery):
 
     await query.answer()
     await query.message.answer(
-        f"📦 <b>Subtotal do pedido: R$ {subtotal:.2f}</b>\n\n"
-        "Como você deseja receber seu pedido?",
+        f"ð¦ <b>Subtotal do pedido: R$ {subtotal:.2f}</b>\n\n"
+        "Como vocÃª deseja receber seu pedido?",
         parse_mode="HTML",
         reply_markup=delivery_kb(),
     )
@@ -457,7 +463,7 @@ async def delivery(query: CallbackQuery):
 
     if not data:
         await query.answer(
-            "Vamos começar o pedido novamente.",
+            "Vamos comeÃ§ar o pedido novamente.",
             show_alert=True,
         )
         return
@@ -465,9 +471,9 @@ async def delivery(query: CallbackQuery):
     data["delivery"] = True
     await query.answer()
     await query.message.answer(
-        "🚚 <b>Entrega selecionada</b>\n\n"
+        "ð <b>Entrega selecionada</b>\n\n"
         "Taxa de entrega: <b>R$ 10,00</b>\n\n"
-        "Agora envie seu endereço completo.",
+        "Agora envie seu endereÃ§o completo.",
         parse_mode="HTML",
     )
 
@@ -478,7 +484,7 @@ async def pickup(query: CallbackQuery):
 
     if not data:
         await query.answer(
-            "Vamos começar o pedido novamente.",
+            "Vamos comeÃ§ar o pedido novamente.",
             show_alert=True,
         )
         return
@@ -498,7 +504,7 @@ async def finish_order(message, user, address):
 
     if not data:
         await message.answer(
-            "Não encontrei um pedido pendente. "
+            "NÃ£o encontrei um pedido pendente. "
             "Volte aos produtos e tente novamente."
         )
         return
@@ -506,7 +512,7 @@ async def finish_order(message, user, address):
     rows, subtotal = cart_data(user.id)
 
     if not rows:
-        await message.answer("Seu carrinho está vazio.")
+        await message.answer("Seu carrinho estÃ¡ vazio.")
         return
 
     is_delivery = data["delivery"] is True
@@ -525,51 +531,51 @@ async def finish_order(message, user, address):
         address=address,
     )
 
-    # Pagamento em três partes: dados do Pix, QR Code e copia e cola.
-    # Gera um Pix copia e cola específico deste pedido, com o valor já preenchido.
+    # Pagamento em trÃªs partes: dados do Pix, QR Code e copia e cola.
+    # Gera um Pix copia e cola especÃ­fico deste pedido, com o valor jÃ¡ preenchido.
     pix_code = pix_payload_com_valor(total)
 
     await message.answer(
-        f"✅ <b>Pedido #{order_id} criado!</b>\n\n"
-        f"🍫 {escape(items)}\n"
-        f"💰 Total: <b>R$ {total:.2f}</b>\n"
-        f"📍 {'Entrega: ' + escape(address) if is_delivery else 'Retirada no local'}",
+        f"â <b>Pedido #{order_id} criado!</b>\n\n"
+        f"ð« {escape(items)}\n"
+        f"ð° Total: <b>R$ {total:.2f}</b>\n"
+        f"ð {'Entrega: ' + escape(address) if is_delivery else 'Retirada no local'}",
         parse_mode="HTML",
     )
 
     # Primeiro enviamos o pagamento em TEXTO. Assim, mesmo que o QR Code
-    # ou algum recurso visual dê erro, o cliente sempre recebe o Pix.
+    # ou algum recurso visual dÃª erro, o cliente sempre recebe o Pix.
     copy_k = InlineKeyboardBuilder()
     try:
         copy_k.add(
             InlineKeyboardButton(
-                text="📋 Copiar Pix copia e cola",
+                text="ð Copiar Pix copia e cola",
                 copy_text=CopyTextButton(text=pix_code),
             )
         )
     except Exception as exc:
-        print(f"Aviso: botão de copiar não pôde ser criado: {exc}")
+        print(f"Aviso: botÃ£o de copiar nÃ£o pÃ´de ser criado: {exc}")
 
     copy_k.button(
-        text="💬 Enviar comprovante ao atendente",
+        text="ð¬ Enviar comprovante ao atendente",
         url=f"https://t.me/{ATENDENTE}",
     )
-    copy_k.button(text="🛍 Fazer novo pedido", callback_data="products")
+    copy_k.button(text="ð Fazer novo pedido", callback_data="products")
     copy_k.adjust(1)
 
     await message.answer(
-        f"💳 <b>Pagamento do pedido #{order_id}</b>\n\n"
-        f"💰 <b>Total a pagar: R$ {total:.2f}</b>\n\n"
-        f"📋 <b>Pix copia e cola:</b>\n"
+        f"ð³ <b>Pagamento do pedido #{order_id}</b>\n\n"
+        f"ð° <b>Total a pagar: R$ {total:.2f}</b>\n\n"
+        f"ð <b>Pix copia e cola:</b>\n"
         f"<code>{escape(pix_code)}</code>\n\n"
-        f"💰 <b>Valor já incluído: R$ {total:.2f}</b>\n\n"
-        "Use o botão abaixo para copiar o Pix.",
+        f"ð° <b>Valor jÃ¡ incluÃ­do: R$ {total:.2f}</b>\n\n"
+        "Use o botÃ£o abaixo para copiar o Pix.",
         parse_mode="HTML",
         reply_markup=copy_k.as_markup(),
     )
 
     # Depois tentamos enviar o QR Code. Se houver qualquer problema, o
-    # pagamento em texto acima continua disponível.
+    # pagamento em texto acima continua disponÃ­vel.
     if qrcode is not None:
         try:
             qr_image = qrcode.make(pix_code)
@@ -582,22 +588,22 @@ async def finish_order(message, user, address):
                     filename=f"pix_pedido_{order_id}.png",
                 ),
                 caption=(
-                    f"📷 <b>QR Code do Pix</b>\n"
+                    f"ð· <b>QR Code do Pix</b>\n"
                     f"Pedido #{order_id}\n"
-                    f"💰 Valor já preenchido: <b>R$ {total:.2f}</b>\n\n"
+                    f"ð° Valor jÃ¡ preenchido: <b>R$ {total:.2f}</b>\n\n"
                     "Escaneie o QR Code para pagar."
                 ),
                 parse_mode="HTML",
             )
         except Exception as exc:
-            print(f"Aviso: QR Code não pôde ser enviado: {exc}")
+            print(f"Aviso: QR Code nÃ£o pÃ´de ser enviado: {exc}")
             await message.answer(
-                "⚠️ Não consegui enviar a imagem do QR Code, mas o Pix copia e cola acima está pronto para pagamento.",
+                "â ï¸ NÃ£o consegui enviar a imagem do QR Code, mas o Pix copia e cola acima estÃ¡ pronto para pagamento.",
                 parse_mode="HTML",
             )
     else:
         await message.answer(
-            "⚠️ A biblioteca do QR Code não está instalada, mas o Pix copia e cola acima está pronto para pagamento.",
+            "â ï¸ A biblioteca do QR Code nÃ£o estÃ¡ instalada, mas o Pix copia e cola acima estÃ¡ pronto para pagamento.",
             parse_mode="HTML",
         )
 
@@ -605,18 +611,18 @@ async def finish_order(message, user, address):
         try:
             await bot.send_message(
                 ADMIN_ID,
-                f"🔔 <b>Novo pedido #{order_id}</b>\n\n"
-                f"Cliente: @{escape(user.username or 'sem usuário')}\n"
+                f"ð <b>Novo pedido #{order_id}</b>\n\n"
+                f"Cliente: @{escape(user.username or 'sem usuÃ¡rio')}\n"
                 f"Itens: {escape(items)}\n"
                 f"Total: R$ {total:.2f}\n"
                 f"Entrega/retirada: {escape(address)}",
                 parse_mode="HTML",
             )
         except Exception as exc:
-            print(f"Não foi possível avisar o administrador: {exc}")
+            print(f"NÃ£o foi possÃ­vel avisar o administrador: {exc}")
 
 
-@dp.message(F.text == "📦 Meus pedidos")
+@dp.message(F.text == "ð¦ Meus pedidos")
 @dp.message(Command("meuspedidos"))
 async def orders(message: Message):
     c = conn()
@@ -628,36 +634,36 @@ async def orders(message: Message):
     c.close()
 
     if not rows:
-        await message.answer("📦 Você ainda não fez nenhum pedido.")
+        await message.answer("ð¦ VocÃª ainda nÃ£o fez nenhum pedido.")
         return
 
-    text = "📦 <b>Seus pedidos:</b>\n\n"
+    text = "ð¦ <b>Seus pedidos:</b>\n\n"
     text += "\n".join(
-        f"#{order_id} — R$ {total:.2f} — {escape(status)}"
+        f"#{order_id} â R$ {total:.2f} â {escape(status)}"
         for order_id, total, status in rows
     )
     await message.answer(text, parse_mode="HTML")
 
 
-@dp.message(F.text == "🎁 Promoções")
+@dp.message(F.text == "ð PromoÃ§Ãµes")
 async def promos(message: Message):
     k = InlineKeyboardBuilder()
-    k.button(text="💬 Falar com atendente", url=f"https://t.me/{ATENDENTE}")
+    k.button(text="ð¬ Falar com atendente", url=f"https://t.me/{ATENDENTE}")
     await message.answer(
-        "🎁 <b>Promoções</b>\n\n"
-        "Consulte as promoções disponíveis com o atendente.",
+        "ð <b>PromoÃ§Ãµes</b>\n\n"
+        "Consulte as promoÃ§Ãµes disponÃ­veis com o atendente.",
         parse_mode="HTML",
         reply_markup=k.as_markup(),
     )
 
 
-@dp.message(F.text == "💬 Falar com atendente")
+@dp.message(F.text == "ð¬ Falar com atendente")
 async def atend(message: Message):
     k = InlineKeyboardBuilder()
-    k.button(text="💬 Abrir atendente", url=f"https://t.me/{ATENDENTE}")
+    k.button(text="ð¬ Abrir atendente", url=f"https://t.me/{ATENDENTE}")
     await message.answer(
-        "💬 <b>Falar com atendente</b>\n\n"
-        "Clique no botão abaixo para abrir o Telegram do atendente.",
+        "ð¬ <b>Falar com atendente</b>\n\n"
+        "Clique no botÃ£o abaixo para abrir o Telegram do atendente.",
         parse_mode="HTML",
         reply_markup=k.as_markup(),
     )
@@ -667,7 +673,7 @@ async def atend(message: Message):
 async def home(query: CallbackQuery):
     await query.answer()
     await query.message.answer(
-        "🍫 <b>Juju Gourmet</b>\n\nEscolha uma opção:",
+        "ð« <b>Juju Gourmet</b>\n\nEscolha uma opÃ§Ã£o:",
         parse_mode="HTML",
         reply_markup=start_kb(),
     )
@@ -676,11 +682,11 @@ async def home(query: CallbackQuery):
 @dp.message(Command("admin"))
 async def admin(message: Message):
     if message.from_user.id != ADMIN_ID:
-        await message.answer("⛔ Acesso não autorizado.")
+        await message.answer("â Acesso nÃ£o autorizado.")
         return
 
     await message.answer(
-        "👑 <b>Painel administrativo</b>\n\n"
+        "ð <b>Painel administrativo</b>\n\n"
         "/pedidos\n/stats\n/produtos_admin",
         parse_mode="HTML",
     )
@@ -699,16 +705,16 @@ async def admin_orders(message: Message):
     c.close()
 
     if not rows:
-        await message.answer("📦 Nenhum pedido ainda.")
+        await message.answer("ð¦ Nenhum pedido ainda.")
         return
 
     for order_id, username, items, total, address, status in rows:
         await message.answer(
-            f"📦 <b>Pedido #{order_id}</b>\n"
-            f"Cliente: @{escape(username or 'sem usuário')}\n"
+            f"ð¦ <b>Pedido #{order_id}</b>\n"
+            f"Cliente: @{escape(username or 'sem usuÃ¡rio')}\n"
             f"Itens: {escape(items)}\n"
             f"Total: R$ {total:.2f}\n"
-            f"Endereço: {escape(address)}\n"
+            f"EndereÃ§o: {escape(address)}\n"
             f"Status: {escape(status)}",
             parse_mode="HTML",
         )
@@ -726,7 +732,7 @@ async def stats(message: Message):
     c.close()
 
     await message.answer(
-        f"📊 <b>Estatísticas</b>\n\n"
+        f"ð <b>EstatÃ­sticas</b>\n\n"
         f"Pedidos: {count}\n"
         f"Faturamento: R$ {total:.2f}",
         parse_mode="HTML",
@@ -745,11 +751,11 @@ async def admin_products(message: Message):
     c.close()
 
     text = "\n".join(
-        f"{product_id} — {escape(name)} — R$ {price:.2f}"
+        f"{product_id} â {escape(name)} â R$ {price:.2f}"
         for product_id, name, price in rows
     )
     await message.answer(
-        f"📋 <b>Produtos</b>\n\n{text}",
+        f"ð <b>Produtos</b>\n\n{text}",
         parse_mode="HTML",
     )
 
@@ -766,7 +772,7 @@ async def address(message: Message):
 
         if len(address_text) < 5:
             await message.answer(
-                "📍 Por favor, envie um endereço mais completo."
+                "ð Por favor, envie um endereÃ§o mais completo."
             )
             return
 
