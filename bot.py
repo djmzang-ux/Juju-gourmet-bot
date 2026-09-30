@@ -6,7 +6,7 @@ from html import escape
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import Message, CallbackQuery, FSInputFile, InlineKeyboardButton, CopyTextButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from dotenv import load_dotenv
 
@@ -64,6 +64,7 @@ PRODUCTS = [
     ("Trufa Ninho com Nutella", 10),
     ("Trufa Ninho com Ovomaltine", 10),
     ("Trufa Paçoca", 10),
+    ("Pastel de Ninho com Nutella", 10),
 ]
 
 
@@ -113,6 +114,7 @@ def menu():
 def start_kb():
     k = InlineKeyboardBuilder()
     k.button(text="🛍 Ver produtos", callback_data="products")
+    k.button(text="🍰 Outras delícias", callback_data="other")
     k.button(text="🛒 Meu carrinho", callback_data="cart")
     k.button(
         text="💬 Falar com atendente",
@@ -130,14 +132,52 @@ def prod_kb():
     c.close()
 
     k = InlineKeyboardBuilder()
+    outras = {
+        "Trufa Ninho com Nutella",
+        "Trufa Ninho com Ovomaltine",
+        "Trufa Paçoca",
+        "Pastel de Ninho com Nutella",
+    }
 
-    # Não existe botão de carrinho abaixo da lista de sabores.
+    # As trufas e o pastel ficam na aba "Outras delícias".
+    for product_id, name, price in rows:
+        if name in outras:
+            continue
+        k.button(
+            text=f"{name} — R$ {price:.2f}",
+            callback_data=f"add:{product_id}",
+        )
+
+    k.button(text="🍰 Outras delícias", callback_data="other")
+    k.button(text="🏠 Voltar ao início", callback_data="home")
+    k.adjust(1)
+    return k.as_markup()
+
+
+def other_kb():
+    c = conn()
+    nomes = (
+        "Trufa Ninho com Nutella",
+        "Trufa Ninho com Ovomaltine",
+        "Trufa Paçoca",
+        "Pastel de Ninho com Nutella",
+    )
+    placeholders = ",".join("?" for _ in nomes)
+    rows = c.execute(
+        f"SELECT id,name,price FROM products WHERE name IN ({placeholders}) ORDER BY id",
+        nomes,
+    ).fetchall()
+    c.close()
+
+    k = InlineKeyboardBuilder()
     for product_id, name, price in rows:
         k.button(
             text=f"{name} — R$ {price:.2f}",
             callback_data=f"add:{product_id}",
         )
 
+    k.button(text="🛒 Ver carrinho", callback_data="cart")
+    k.button(text="🛍 Continuar comprando", callback_data="products")
     k.button(text="🏠 Voltar ao início", callback_data="home")
     k.adjust(1)
     return k.as_markup()
@@ -289,6 +329,16 @@ async def products(message: Message):
 async def products_cb(query: CallbackQuery):
     await query.answer()
     await show_products_message(query.message)
+
+
+@dp.callback_query(F.data == "other")
+async def other_cb(query: CallbackQuery):
+    await query.answer()
+    await query.message.answer(
+        "🍰 <b>Outras delícias:</b>\n\nEscolha uma opção abaixo.",
+        parse_mode="HTML",
+        reply_markup=other_kb(),
+    )
 
 
 @dp.callback_query(F.data.startswith("add:"))
@@ -458,17 +508,14 @@ async def finish_order(message, user, address):
         address=address,
     )
 
+    # Pagamento em três partes: dados do Pix, QR Code e copia e cola.
     payment_text = (
         f"💳 <b>Pagamento do pedido #{order_id}</b>\n\n"
         f"🍫 Produtos: R$ {subtotal:.2f}\n"
         f"{'🚚 Entrega' if is_delivery else '🏠 Retirada'}: R$ {fee:.2f}\n"
         f"💰 <b>Total a pagar: R$ {total:.2f}</b>\n\n"
-        f"🔑 <b>Pix:</b> {escape(PIX_KEY)}\n"
-        f"👤 <b>Nome:</b> {escape(PIX_NAME)}\n\n"
-        f"📋 <b>Pix copia e cola:</b>\n"
-        f"<code>{escape(PIX_COPIA_COLA)}</code>\n\n"
-        "Você também pode escanear o QR Code abaixo.\n"
-        "Depois do pagamento, envie o comprovante ao atendente."
+        f"🔑 <b>Pix:</b> <code>{escape(PIX_KEY)}</code>\n"
+        f"👤 <b>Nome:</b> {escape(PIX_NAME)}"
     )
 
     await message.answer(
@@ -479,19 +526,48 @@ async def finish_order(message, user, address):
         parse_mode="HTML",
     )
 
+    # 1) Dados do Pix ficam primeiro.
+    await message.answer(payment_text, parse_mode="HTML")
+
+    # 2) QR Code fica exatamente entre o Pix e o copia e cola.
     if ensure_qr():
         await message.answer_photo(
             FSInputFile(QR_FILE),
-            caption=payment_text,
+            caption=(
+                f"📷 <b>QR Code do Pix</b>\n"
+                f"Pedido #{order_id} • Total: <b>R$ {total:.2f}</b>\n\n"
+                "Aponte a câmera do aplicativo do banco para o QR Code."
+            ),
             parse_mode="HTML",
-            reply_markup=payment_kb(),
         )
     else:
         await message.answer(
-            payment_text,
-            parse_mode="HTML",
-            reply_markup=payment_kb(),
+            "⚠️ O QR Code não pôde ser gerado.\n"
+            "Use o Pix copia e cola abaixo para fazer o pagamento."
         )
+
+    # 3) Copia e cola abaixo do QR Code, com botão nativo de copiar.
+    copy_k = InlineKeyboardBuilder()
+    copy_k.add(
+        InlineKeyboardButton(
+            text="📋 Copiar Pix copia e cola",
+            copy_text=CopyTextButton(text=PIX_COPIA_COLA),
+        )
+    )
+    copy_k.button(
+        text="💬 Enviar comprovante ao atendente",
+        url=f"https://t.me/{ATENDENTE}",
+    )
+    copy_k.button(text="🛍 Fazer novo pedido", callback_data="products")
+    copy_k.adjust(1)
+
+    await message.answer(
+        f"📋 <b>Pix copia e cola</b>\n\n"
+        f"<code>{escape(PIX_COPIA_COLA)}</code>\n\n"
+        "Toque em <b>Copiar Pix copia e cola</b> para copiar automaticamente.",
+        parse_mode="HTML",
+        reply_markup=copy_k.as_markup(),
+    )
 
     if ADMIN_ID:
         try:
