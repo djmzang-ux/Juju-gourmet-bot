@@ -7,7 +7,7 @@ from html import escape
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, FSInputFile, BufferedInputFile, InlineKeyboardButton, CopyTextButton, InlineKeyboardButton, CopyTextButton
+from aiogram.types import Message, CallbackQuery, FSInputFile, BufferedInputFile, InlineKeyboardButton, CopyTextButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from dotenv import load_dotenv
 
@@ -537,42 +537,19 @@ async def finish_order(message, user, address):
         parse_mode="HTML",
     )
 
-    # QR Code gerado na hora, com o mesmo valor do pedido.
-    if qrcode is not None:
-        qr_image = qrcode.make(pix_code)
-        qr_buffer = BytesIO()
-        qr_image.save(qr_buffer, format="PNG")
-        qr_buffer.seek(0)
-
-        await message.answer_photo(
-            BufferedInputFile(
-                qr_buffer.getvalue(),
-                filename=f"pix_pedido_{order_id}.png",
-            ),
-            caption=(
-                f"📷 <b>QR Code do Pix</b>\n"
-                f"Pedido #{order_id}\n"
-                f"💰 Valor já preenchido: <b>R$ {total:.2f}</b>\n\n"
-                "Escaneie o QR Code para pagar."
-            ),
-            parse_mode="HTML",
-        )
-    else:
-        await message.answer(
-            "⚠️ O QR Code não pôde ser gerado porque a biblioteca "
-            "<code>qrcode</code> não está instalada.\n\n"
-            "Use o Pix copia e cola abaixo.",
-            parse_mode="HTML",
-        )
-
-    # Botão nativo do Telegram para copiar o código completo.
+    # Primeiro enviamos o pagamento em TEXTO. Assim, mesmo que o QR Code
+    # ou algum recurso visual dê erro, o cliente sempre recebe o Pix.
     copy_k = InlineKeyboardBuilder()
-    copy_k.add(
-        InlineKeyboardButton(
-            text="📋 Copiar Pix copia e cola",
-            copy_text=CopyTextButton(text=pix_code),
+    try:
+        copy_k.add(
+            InlineKeyboardButton(
+                text="📋 Copiar Pix copia e cola",
+                copy_text=CopyTextButton(text=pix_code),
+            )
         )
-    )
+    except Exception as exc:
+        print(f"Aviso: botão de copiar não pôde ser criado: {exc}")
+
     copy_k.button(
         text="💬 Enviar comprovante ao atendente",
         url=f"https://t.me/{ATENDENTE}",
@@ -581,13 +558,48 @@ async def finish_order(message, user, address):
     copy_k.adjust(1)
 
     await message.answer(
-        f"📋 <b>Pix copia e cola</b>\n\n"
+        f"💳 <b>Pagamento do pedido #{order_id}</b>\n\n"
+        f"💰 <b>Total a pagar: R$ {total:.2f}</b>\n\n"
+        f"📋 <b>Pix copia e cola:</b>\n"
         f"<code>{escape(pix_code)}</code>\n\n"
         f"💰 <b>Valor já incluído: R$ {total:.2f}</b>\n\n"
-        "Toque no botão abaixo para copiar.",
+        "Use o botão abaixo para copiar o Pix.",
         parse_mode="HTML",
         reply_markup=copy_k.as_markup(),
     )
+
+    # Depois tentamos enviar o QR Code. Se houver qualquer problema, o
+    # pagamento em texto acima continua disponível.
+    if qrcode is not None:
+        try:
+            qr_image = qrcode.make(pix_code)
+            qr_buffer = BytesIO()
+            qr_image.save(qr_buffer, format="PNG")
+            qr_buffer.seek(0)
+            await message.answer_photo(
+                BufferedInputFile(
+                    qr_buffer.getvalue(),
+                    filename=f"pix_pedido_{order_id}.png",
+                ),
+                caption=(
+                    f"📷 <b>QR Code do Pix</b>\n"
+                    f"Pedido #{order_id}\n"
+                    f"💰 Valor já preenchido: <b>R$ {total:.2f}</b>\n\n"
+                    "Escaneie o QR Code para pagar."
+                ),
+                parse_mode="HTML",
+            )
+        except Exception as exc:
+            print(f"Aviso: QR Code não pôde ser enviado: {exc}")
+            await message.answer(
+                "⚠️ Não consegui enviar a imagem do QR Code, mas o Pix copia e cola acima está pronto para pagamento.",
+                parse_mode="HTML",
+            )
+    else:
+        await message.answer(
+            "⚠️ A biblioteca do QR Code não está instalada, mas o Pix copia e cola acima está pronto para pagamento.",
+            parse_mode="HTML",
+        )
 
     if ADMIN_ID:
         try:
